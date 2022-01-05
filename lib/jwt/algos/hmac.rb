@@ -28,7 +28,10 @@ module JWT
             false
           end
         else
-          SecurityUtils.secure_compare(signature, sign(JWT::Signature::ToSign.new(algorithm, signing_input, public_key)))
+          SecurityUtils.secure_compare(
+            signature,
+            sign(JWT::Signer::ToSign.new(algorithm, signing_input, public_key))
+          )
         end
       end
     end
