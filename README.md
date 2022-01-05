@@ -52,7 +52,7 @@ require 'jwt'
 payload = { data: 'test' }
 
 # IMPORTANT: set nil as password parameter
-token = JWT.encode payload, nil, 'none'
+token = JWT.encode payload: payload, signer: JWT::Signer.new(nil, 'none')
 
 # eyJhbGciOiJub25lIn0.eyJkYXRhIjoidGVzdCJ9.
 puts token
@@ -79,7 +79,7 @@ puts decoded_token
 # The secret must be a string. A JWT::DecodeError will be raised if it isn't provided.
 hmac_secret = 'my$ecretK3y'
 
-token = JWT.encode payload, hmac_secret, 'HS256'
+token = JWT.encode payload: payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 # eyJhbGciOiJIUzI1NiJ9.eyJkYXRhIjoidGVzdCJ9.pNIWIL34Jo13LViZAJACzK6Yf0qnvT_BuwOxiMCPE-Y
 puts token
@@ -110,7 +110,7 @@ on MacOS with `brew install libsodium`.
 rsa_private = OpenSSL::PKey::RSA.generate 2048
 rsa_public = rsa_private.public_key
 
-token = JWT.encode payload, rsa_private, 'RS256'
+token = JWT.encode payload: payload, signer: JWT::Signer.new(rsa_private, 'RS256')
 
 # eyJhbGciOiJSUzI1NiJ9.eyJkYXRhIjoidGVzdCJ9.GplO4w1spRgvEJQ3-FOtZr-uC8L45Jt7SN0J4woBnEXG_OZBSNcZjAJWpjadVYEe2ev3oUBFDYM1N_-0BTVeFGGYvMewu8E6aMjSZvOpf1cZBew-Vt4poSq7goG2YRI_zNPt3af2lkPqXD796IKC5URrEvcgF5xFQ-6h07XRDpSRx1ECrNsUOt7UM3l1IB4doY11GzwQA5sHDTmUZ0-kBT76ZMf12Srg_N3hZwphxBtudYtN5VGZn420sVrQMdPE_7Ni3EiWT88j7WCr1xrF60l8sZT3yKCVleG7D2BEXacTntB7GktBv4Xo8OKnpwpqTpIlC05dMowMkz3rEAAYbQ
 puts token
@@ -137,7 +137,7 @@ ecdsa_key.generate_key
 ecdsa_public = OpenSSL::PKey::EC.new ecdsa_key
 ecdsa_public.private_key = nil
 
-token = JWT.encode payload, ecdsa_key, 'ES256'
+token = JWT.encode payload: payload, signer: JWT::Signer.new(ecdsa_key, 'ES256')
 
 # eyJhbGciOiJFUzI1NiJ9.eyJkYXRhIjoidGVzdCJ9.AlLW--kaF7EX1NMX9WJRuIW8NeRJbn2BLXHns7Q5TZr7Hy3lF6MOpMlp7GoxBFRLISQ6KrD0CJOrR8aogEsPeg
 puts token
@@ -167,7 +167,7 @@ For more detailed installation instruction check the official [repository](https
 ```ruby
 private_key = RbNaCl::Signatures::Ed25519::SigningKey.new('abcdefghijklmnopqrstuvwxyzABCDEF')
 public_key = private_key.verify_key
-token = JWT.encode payload, private_key, 'ED25519'
+token = JWT.encode payload: payload, signer: JWT::Signer.new(private_key, 'ED25519')
 
 # eyJhbGciOiJFRDI1NTE5In0.eyJkYXRhIjoidGVzdCJ9.6xIztXyOupskddGA_RvKU76V9b2dCQUYhoZEVFnRimJoPYIzZ2Fm47CWw8k2NTCNpgfAuxg9OXjaiVK7MvrbCQ
 puts token
@@ -197,7 +197,7 @@ gem 'openssl', '~> 2.1'
 rsa_private = OpenSSL::PKey::RSA.generate 2048
 rsa_public = rsa_private.public_key
 
-token = JWT.encode payload, rsa_private, 'PS256'
+token = JWT.encode payload: payload, signer: JWT::Signer.new(rsa_private, 'PS256')
 
 # eyJhbGciOiJQUzI1NiJ9.eyJkYXRhIjoidGVzdCJ9.KEmqagMUHM-NcmXo6818ZazVTIAkn9qU9KQFT1c5Iq91n0KRpAI84jj4ZCdkysDlWokFs3Dmn4MhcXP03oJKLFgnoPL40_Wgg9iFr0jnIVvnMUp1kp2RFUbL0jqExGTRA3LdAhuvw6ZByGD1bkcWjDXygjQw-hxILrT1bENjdr0JhFd-cB0-ps5SB0mwhFNcUw-OM3Uu30B1-mlFaelUY8jHJYKwLTZPNxHzndt8RGXF8iZLp7dGb06HSCKMcVzhASGMH4ZdFystRe2hh31cwcvnl-Eo_D4cdwmpN3Abhk_8rkxawQJR3duh8HNKc4AyFPo7SabEaSu2gLnLfN3yfg
 puts token
@@ -229,7 +229,7 @@ Ruby-jwt gem supports custom [header fields](https://tools.ietf.org/html/rfc7519
 To add custom header fields you need to pass `header_fields` parameter
 
 ```ruby
-token = JWT.encode payload, key, algorithm='HS256', header_fields={}
+token = JWT.encode payload: payload, signer: JWT::Signer.new(key, algorithm='HS256'), header_fields={}
 ```
 
 **Example:**
@@ -240,7 +240,7 @@ require 'jwt'
 payload = { data: 'test' }
 
 # IMPORTANT: set nil as password parameter
-token = JWT.encode payload, nil, 'none', { typ: 'JWT' }
+token = JWT.encode payload: payload, signer: JWT::Signer.new(nil, 'none'), { typ: 'JWT' }
 
 # eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJkYXRhIjoidGVzdCJ9.
 puts token
@@ -268,7 +268,7 @@ From [Oauth JSON Web Token 4.1.4. "exp" (Expiration Time) Claim](https://tools.i
 exp = Time.now.to_i + 4 * 3600
 exp_payload = { data: 'data', exp: exp }
 
-token = JWT.encode exp_payload, hmac_secret, 'HS256'
+token = JWT.encode payload: exp_payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 begin
   decoded_token = JWT.decode token, hmac_secret, true, { algorithm: 'HS256' }
@@ -292,7 +292,7 @@ leeway = 30 # seconds
 exp_payload = { data: 'data', exp: exp }
 
 # build expired token
-token = JWT.encode exp_payload, hmac_secret, 'HS256'
+token = JWT.encode payload: exp_payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 begin
   # add leeway to ensure the token is still accepted
@@ -314,7 +314,7 @@ From [Oauth JSON Web Token 4.1.5. "nbf" (Not Before) Claim](https://tools.ietf.o
 nbf = Time.now.to_i - 3600
 nbf_payload = { data: 'data', nbf: nbf }
 
-token = JWT.encode nbf_payload, hmac_secret, 'HS256'
+token = JWT.encode payload: nbf_payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 begin
   decoded_token = JWT.decode token, hmac_secret, true, { algorithm: 'HS256' }
@@ -338,7 +338,7 @@ leeway = 30
 nbf_payload = { data: 'data', nbf: nbf }
 
 # build expired token
-token = JWT.encode nbf_payload, hmac_secret, 'HS256'
+token = JWT.encode payload: nbf_payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 begin
   # add leeway to ensure the token is valid
@@ -360,7 +360,7 @@ You can pass multiple allowed issuers as an Array, verification will pass if one
 iss = 'My Awesome Company Inc. or https://my.awesome.website/'
 iss_payload = { data: 'data', iss: iss }
 
-token = JWT.encode iss_payload, hmac_secret, 'HS256'
+token = JWT.encode payload: iss_payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 begin
   # Add iss to the validation to check if the token has been manipulated
@@ -380,7 +380,7 @@ From [Oauth JSON Web Token 4.1.3. "aud" (Audience) Claim](https://tools.ietf.org
 aud = ['Young', 'Old']
 aud_payload = { data: 'data', aud: aud }
 
-token = JWT.encode aud_payload, hmac_secret, 'HS256'
+token = JWT.encode payload: aud_payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 begin
   # Add aud to the validation to check if the token has been manipulated
@@ -403,7 +403,7 @@ jti_raw = [hmac_secret, iat].join(':').to_s
 jti = Digest::MD5.hexdigest(jti_raw)
 jti_payload = { data: 'data', iat: iat, jti: jti }
 
-token = JWT.encode jti_payload, hmac_secret, 'HS256'
+token = JWT.encode payload: jti_payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 begin
   # If :verify_jti is true, validation will pass if a JTI is present
@@ -430,7 +430,7 @@ From [Oauth JSON Web Token 4.1.6. "iat" (Issued At) Claim](https://tools.ietf.or
 iat = Time.now.to_i
 iat_payload = { data: 'data', iat: iat }
 
-token = JWT.encode iat_payload, hmac_secret, 'HS256'
+token = JWT.encode payload: iat_payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 begin
   # Add iat to the validation to check if the token has been manipulated
@@ -450,7 +450,7 @@ From [Oauth JSON Web Token 4.1.2. "sub" (Subject) Claim](https://tools.ietf.org/
 sub = 'Subject'
 sub_payload = { data: 'data', sub: sub }
 
-token = JWT.encode sub_payload, hmac_secret, 'HS256'
+token = JWT.encode payload: sub_payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 begin
   # Add sub to the validation to check if the token has been manipulated
@@ -470,7 +470,7 @@ iss_payload = { data: 'data', iss: issuers.first }
 
 secrets = { issuers.first => hmac_secret, issuers.last => 'hmac_secret2' }
 
-token = JWT.encode iss_payload, hmac_secret, 'HS256'
+token = JWT.encode payload: iss_payload, signer: JWT::Signer.new(hmac_secret, 'HS256')
 
 begin
   # Add iss to the validation to check if the token has been manipulated
@@ -519,7 +519,7 @@ JWK is a JSON structure representing a cryptographic key. Currently only support
 jwk = JWT::JWK.new(OpenSSL::PKey::RSA.new(2048), "optional-kid")
 payload, headers = { data: 'data' }, { kid: jwk.kid }
 
-token = JWT.encode(payload, jwk.keypair, 'RS512', headers)
+token = JWT.encode(payload: payload, signer: JWT::Signer.new(jwk.keypair, 'RS512'), header_fields: headers)
 
 # The jwk loader would fetch the set of JWKs from a trusted source
 jwk_loader = ->(options) do
