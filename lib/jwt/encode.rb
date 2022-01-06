@@ -12,9 +12,10 @@ module JWT
 
     def initialize(options)
       @payload = options[:payload]
-      @key = options[:key]
-      _, @algorithm = Algos.find(options[:algorithm])
-      @headers = options[:headers].each_with_object({}) { |(key, value), headers| headers[key.to_s] = value }
+      @signer = options[:signer]
+      @headers = options[:headers].each_with_object({}) do |(key, value), headers|
+        headers[key.to_s] = value
+      end
     end
 
     def segments
@@ -22,6 +23,10 @@ module JWT
     end
 
     private
+
+    def algorithm
+      @algorithm ||= @signer&.algorithm || 'none'
+    end
 
     def encoded_header
       @encoded_header ||= encode_header
@@ -40,7 +45,7 @@ module JWT
     end
 
     def encode_header
-      @headers[ALG_KEY] = @algorithm
+      @headers[ALG_KEY] = algorithm
       encode(@headers)
     end
 
@@ -53,9 +58,12 @@ module JWT
     end
 
     def encode_signature
-      return '' if @algorithm == ALG_NONE
+      return '' if @signer.nil? || @signer.algorithm == ALG_NONE
 
-      Base64.urlsafe_encode64(JWT::Signature.sign(@algorithm, encoded_header_and_payload, @key), padding: false)
+      Base64.urlsafe_encode64(
+        @signer.sign(encoded_header_and_payload),
+        padding: false
+      )
     end
 
     def encode(data)

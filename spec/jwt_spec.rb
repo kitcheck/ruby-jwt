@@ -55,7 +55,7 @@ RSpec.describe JWT do
     let(:encoded_token) { data['NONE'] }
 
     it 'should generate a valid token' do
-      token = JWT.encode payload, nil, alg
+      token = JWT.encode payload: payload
 
       expect(token).to eq encoded_token
     end
@@ -89,7 +89,7 @@ RSpec.describe JWT do
         end
 
         context 'when the claims are invalid' do
-          let(:encoded_token) { JWT.encode({ exp: 0 }, nil, 'none') }
+          let(:encoded_token) { JWT.encode(payload: { exp: 0 }) }
           it 'should fail to decode the token' do
             expect do
               JWT.decode encoded_token, nil, true
@@ -107,7 +107,7 @@ RSpec.describe JWT do
       expect(validator).to receive(:validate!) { true }
 
       payload = {}
-      JWT.encode payload, 'secret', 'HS256'
+      JWT.encode payload: payload, signer: JWT::Signer.new('secret', 'HS256')
     end
 
     it 'does not validate the payload if it is not present' do
@@ -115,7 +115,7 @@ RSpec.describe JWT do
       expect(JWT::ClaimsValidator).not_to receive(:new) { validator }
 
       payload = nil
-      JWT.encode payload, 'secret', 'HS256'
+      JWT.encode payload: payload, signer: JWT::Signer.new('secret', 'HS256')
     end
   end
 
@@ -125,7 +125,7 @@ RSpec.describe JWT do
   algorithms.each do |alg|
     context "alg: #{alg}" do
       it 'should generate a valid token' do
-        token = JWT.encode payload, data[:secret], alg
+        token = JWT.encode payload: payload, signer: JWT::Signer.new(data[:secret], alg)
 
         expect(token).to eq data[alg]
       end
@@ -154,7 +154,7 @@ RSpec.describe JWT do
   %w[RS256 RS384 RS512].each do |alg|
     context "alg: #{alg}" do
       it 'should generate a valid token' do
-        token = JWT.encode payload, data[:rsa_private], alg
+        token = JWT.encode payload: payload, signer: JWT::Signer.new(data[:rsa_private], alg)
 
         expect(token).to eq data[alg]
       end
@@ -232,7 +232,7 @@ RSpec.describe JWT do
   %w[ES256 ES384 ES512].each do |alg|
     context "alg: #{alg}" do
       before(:each) do
-        data[alg] = JWT.encode payload, data["#{alg}_private"], alg
+        data[alg] = JWT.encode payload: payload, signer: JWT::Signer.new(data["#{alg}_private"], alg)
       end
 
       let(:wrong_key) { OpenSSL::PKey.read(File.read(File.join(CERT_PATH, 'ec256-wrong-public.pem'))) }
@@ -269,7 +269,7 @@ RSpec.describe JWT do
     %w[PS256 PS384 PS512].each do |alg|
       context "alg: #{alg}" do
         before(:each) do
-          data[alg] = JWT.encode payload, data[:rsa_private], alg
+          data[alg] = JWT.encode payload: payload, signer: JWT::Signer.new(data[:rsa_private], alg)
         end
 
         let(:wrong_key) { data[:wrong_rsa_public] }
@@ -330,12 +330,12 @@ RSpec.describe JWT do
   context 'Invalid' do
     it 'algorithm should raise NotImplementedError' do
       expect do
-        JWT.encode payload, 'secret', 'HS255'
+        JWT.encode payload: payload, signer: JWT::Signer.new('secret', 'HS255')
       end.to raise_error NotImplementedError
     end
 
     it 'raises "No verification key available" error' do
-      token = JWT.encode({}, 'foo')
+      token = JWT.encode(payload: {}, signer: JWT::Signer.new('foo'))
       expect { JWT.decode(token, nil, true) }.to raise_error(JWT::DecodeError, 'No verification key available')
     end
 
@@ -344,10 +344,10 @@ RSpec.describe JWT do
       key.generate_key
 
       expect do
-        JWT.encode payload, key, 'ES256'
+        JWT.encode payload: payload, signer: JWT::Signer.new(key, 'ES256')
       end.to raise_error JWT::IncorrectAlgorithm
 
-      token = JWT.encode payload, data['ES256_private'], 'ES256'
+      token = JWT.encode payload: payload, signer: JWT::Signer.new(data['ES256_private'], 'ES256')
       key.private_key = nil
 
       expect do
@@ -359,7 +359,7 @@ RSpec.describe JWT do
   context 'Verify' do
     context 'when key given as an array with multiple possible keys' do
       let(:payload) { { 'data' => 'data'} }
-      let(:token)   { JWT.encode(payload, secret, 'HS256') }
+      let(:token)   { JWT.encode(payload: payload, signer: JWT::Signer.new(secret, 'HS256')) }
       let(:secret)  { 'hmac_secret' }
 
       it 'should be able to verify signature when block returns multiple keys' do
@@ -384,7 +384,7 @@ RSpec.describe JWT do
     context 'when encoded payload is used to extract key through find_key' do
       it 'should be able to find a key using the block passed to decode' do
         payload_data = { key: 'secret' }
-        token = JWT.encode payload_data, data[:secret], 'HS256'
+        token = JWT.encode payload: payload_data, signer: JWT::Signer.new(data[:secret], 'HS256')
 
         expect do
           JWT.decode(token, nil, true, { algorithm: 'HS256' }) do |_headers, payload|
@@ -399,7 +399,7 @@ RSpec.describe JWT do
 
         secrets = { iss => ['hmac_secret2', data[:secret]] }
 
-        token = JWT.encode iss_payload, data[:secret], 'HS256'
+        token = JWT.encode payload: iss_payload, signer: JWT::Signer.new(data[:secret], 'HS256')
 
         expect do
           JWT.decode(token, nil, true, { iss: iss, verify_iss: true, algorithm: 'HS256' }) do |_headers, payload|
@@ -414,7 +414,7 @@ RSpec.describe JWT do
 
         secrets = { iss => data[:secret] }
 
-        token = JWT.encode iss_payload, data[:secret], 'HS256'
+        token = JWT.encode payload: iss_payload, signer: JWT::Signer.new(data[:secret], 'HS256')
 
         expect do
           JWT.decode(token, nil, true, { iss: iss, verify_iss: true, algorithm: 'HS256' }) do |_headers, payload|
@@ -429,7 +429,7 @@ RSpec.describe JWT do
 
         secrets = { iss => ['hmac_secret2', data[:secret]] }
 
-        token = JWT.encode iss_payload, data[:secret], 'HS256'
+        token = JWT.encode payload: iss_payload, signer: JWT::Signer.new(data[:secret], 'HS256')
 
         expect do
           JWT.decode(token, nil, true, { iss: iss, verify_iss: true, algorithm: 'HS256' }) do |_headers, payload|
@@ -444,7 +444,7 @@ RSpec.describe JWT do
 
         secrets = { issuers.first => data[:secret], issuers.last => 'hmac_secret2' }
 
-        token = JWT.encode iss_payload, data[:secret], 'HS256'
+        token = JWT.encode payload: iss_payload, signer: JWT::Signer.new(data[:secret], 'HS256')
 
         expect do
           JWT.decode(token, nil, true, { iss: issuers, verify_iss: true, algorithm: 'HS256' }) do |_headers, payload|
@@ -459,7 +459,7 @@ RSpec.describe JWT do
 
         secrets = { issuers.first => [data[:secret], 'hmac_secret1'], issuers.last => 'hmac_secret2' }
 
-        token = JWT.encode iss_payload, data[:secret], 'HS256'
+        token = JWT.encode payload: iss_payload, signer: JWT::Signer.new(data[:secret], 'HS256')
 
         expect do
           JWT.decode(token, nil, true, { iss: issuers, verify_iss: true, algorithm: 'HS256' }) do |_headers, payload|
@@ -471,7 +471,7 @@ RSpec.describe JWT do
 
     context 'algorithm' do
       it 'should raise JWT::IncorrectAlgorithm on mismatch' do
-        token = JWT.encode payload, data[:secret], 'HS256'
+        token = JWT.encode payload: payload, signer: JWT::Signer.new(data[:secret], 'HS256')
 
         expect do
           JWT.decode token, data[:secret], true, algorithm: 'HS384'
@@ -483,7 +483,7 @@ RSpec.describe JWT do
       end
 
       it 'should raise JWT::IncorrectAlgorithm on mismatch prior to kid public key network call' do
-        token = JWT.encode payload, data[:rsa_private], 'RS256'
+        token = JWT.encode payload: payload, signer: JWT::Signer.new(data[:rsa_private], 'RS256')
 
         expect do
           JWT.decode(token, nil, true, { algorithms: ['RS384'] }) do |_, _|
@@ -499,7 +499,7 @@ RSpec.describe JWT do
       end
 
       it 'should raise JWT::IncorrectAlgorithm when algorithms array does not contain algorithm' do
-        token = JWT.encode payload, data[:secret], 'HS512'
+        token = JWT.encode payload: payload, signer: JWT::Signer.new(data[:secret], 'HS512')
 
         expect do
           JWT.decode token, data[:secret], true, algorithms: ['HS384']
@@ -520,7 +520,7 @@ RSpec.describe JWT do
 
       context 'no algorithm provided' do
         it 'should use the default decode algorithm' do
-          token = JWT.encode payload, data[:rsa_public].to_s
+          token = JWT.encode payload: payload, signer: JWT::Signer.new(data[:rsa_public].to_s)
 
           jwt_payload, header = JWT.decode token, data[:rsa_public].to_s
 
@@ -544,7 +544,7 @@ RSpec.describe JWT do
 
       let :token do
         iss_payload = payload.merge(iss: iss)
-        JWT.encode iss_payload, data[:secret]
+        JWT.encode payload: iss_payload, signer: JWT::Signer.new(data[:secret])
       end
       it 'if verify_iss is set to false (default option) should not raise JWT::InvalidIssuerError' do
         expect do
@@ -562,8 +562,16 @@ RSpec.describe JWT do
 
   context 'a token with not enough segments' do
     it 'raises JWT::DecodeError' do
-      token = JWT.encode('ThisIsNotAValidJWTToken', 'secret').split('.').slice(1, 2).join
-      expect { JWT.decode(token, nil, true) }.to raise_error(JWT::DecodeError, 'Not enough or too many segments')
+      token = JWT
+        .encode(
+          payload: 'ThisIsNotAValidJWTToken',
+          signer: JWT::Signer.new('secret')
+        )
+        .split('.')
+        .slice(1, 2)
+        .join
+      expect { JWT.decode(token, nil, true) }
+      .to raise_error(JWT::DecodeError, 'Not enough or too many segments')
     end
   end
 
@@ -591,24 +599,34 @@ RSpec.describe JWT do
 
   it 'should not raise InvalidPayload exception if payload is an array' do
     expect do
-      JWT.encode(['my', 'payload'], 'secret')
+      JWT.encode(payload: ['my', 'payload'], signer: JWT::Signer.new('secret'))
     end.not_to raise_error
   end
 
   it 'should encode string payloads' do
     expect do
-      JWT.encode 'Hello World', 'secret'
+      JWT.encode payload: 'Hello World', signer: JWT::Signer.new('secret', 'HS256')
     end.not_to raise_error
   end
 
   context 'when the alg value is given as a header parameter' do
     it 'does not override the actual algorithm used' do
-      headers = JSON.parse(Base64.urlsafe_decode64(JWT.encode('Hello World', 'secret', 'HS256', { alg: 'HS123'}).split('.').first))
+      jwt = JWT.encode(
+        payload: 'Hello World',
+        header_fields: { alg: 'HS123' },
+        signer: JWT::Signer.new('secret', 'HS256')
+      )
+      headers = JSON.parse(Base64.urlsafe_decode64(jwt.split('.').first))
       expect(headers['alg']).to eq('HS256')
     end
 
     it 'should generate the same token' do
-      expect(JWT.encode('Hello World', 'secret', 'HS256', { alg: 'HS256'})).to eq JWT.encode('Hello World', 'secret', 'HS256')
+      expected = JWT.encode(
+        payload: 'Hello World',
+        signer: JWT::Signer.new('secret', 'HS256'),
+        header_fields: { alg: 'HS256'}
+      )
+      expect(expected).to eq JWT.encode(payload: 'Hello World', signer: JWT::Signer.new('secret', 'HS256'))
     end
   end
 
@@ -616,10 +634,10 @@ RSpec.describe JWT do
     it 'encodes payload' do
       payload = { a: 1, b: 'b'}
 
-      token = JWT.encode(payload, '', 'HS256')
+      token = JWT.encode(payload: payload, signer: JWT::Signer.new('', 'HS256'))
 
       expect do
-        token_without_secret = JWT.encode(payload, nil, 'HS256')
+        token_without_secret = JWT.encode(payload: payload, signer: JWT::Signer.new(nil, 'HS256'))
         expect(token).to eq(token_without_secret)
       end.not_to raise_error
     end
@@ -629,26 +647,31 @@ RSpec.describe JWT do
     let(:payload) { { 'a' => 1, 'b' => 'b' } }
 
     it 'ignores algorithm casing during encode/decode' do
-      enc = JWT.encode(payload, '', 'hs256')
+      enc = JWT.encode(payload: payload, signer: JWT::Signer.new('', 'hs256'))
       expect(JWT.decode(enc, '')).to eq([payload, { 'alg' => 'HS256'}])
 
-      enc = JWT.encode(payload, data[:rsa_private], 'rs512')
+      enc = JWT.encode(payload: payload, signer: JWT::Signer.new(data[:rsa_private], 'rs512'))
       expect(JWT.decode(enc, data[:rsa_public], true, algorithm: 'RS512')).to eq([payload, { 'alg' => 'RS512'}])
 
-      enc = JWT.encode(payload, data[:rsa_private], 'RS512')
+      enc = JWT.encode(payload: payload, signer: JWT::Signer.new(data[:rsa_private], 'RS512'))
       expect(JWT.decode(enc, data[:rsa_public], true, algorithm: 'rs512')).to eq([payload, { 'alg' => 'RS512'}])
     end
 
     it 'raises error for invalid algorithm' do
       expect do
-        JWT.encode(payload, '', 'xyz')
+        JWT.encode(payload: payload, signer: JWT::Signer.new('', 'xyz'))
       end.to raise_error(NotImplementedError)
     end
   end
 
   describe '::JWT.decode with verify_iat parameter' do
     let!(:time_now) { Time.now }
-    let(:token)     { ::JWT.encode({ pay: 'load', iat: iat}, 'secret', 'HS256') }
+    let(:token) do
+      ::JWT.encode(
+        payload: { pay: 'load', iat: iat},
+        signer: JWT::Signer.new('secret', 'HS256')
+      )
+    end
 
     subject(:decoded_token) { ::JWT.decode(token, 'secret', true, verify_iat: true) }
 
