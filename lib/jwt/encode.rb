@@ -9,6 +9,7 @@ module JWT
   class Encode
     ALG_NONE = 'none'
     ALG_KEY  = 'alg'
+    KID = 'kid'
 
     def initialize(options)
       @payload = options[:payload]
@@ -44,6 +45,9 @@ module JWT
 
     def encode_header
       @headers[ALG_KEY] = algorithm
+      if !@signer.nil? && @signer.respond_to?(:kid) && !@signer.kid.nil?
+        @headers[KID] = @signer.kid
+      end
       encode(@headers)
     end
 
