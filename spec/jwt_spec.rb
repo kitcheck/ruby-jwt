@@ -760,21 +760,21 @@ RSpec.describe JWT do
   end
 
   describe 'when none token is and decoding without key and with verification' do
-    let(:none_token) { ::JWT.encode(payload: payload) }
+    let(:none_token) { ::JWT.encode(payload: payload, signer: JWT::Signer.new(nil, 'none')) }
     it 'decodes the token' do
       expect(::JWT.decode(none_token, nil, true, algorithms: 'none')).to eq([payload, { 'alg' => 'none' }])
     end
   end
 
   describe 'when none token is decoded with a key given' do
-    let(:none_token) { ::JWT.encode(payload: payload) }
+    let(:none_token) { ::JWT.encode(payload: payload, signer: JWT::Signer.new(nil, 'none')) }
     it 'decodes the token' do
       expect(::JWT.decode(none_token, 'key', true, algorithms: 'none')).to eq([payload, { 'alg' => 'none' }])
     end
   end
 
   describe 'when none token is decoded without verify' do
-    let(:none_token) { ::JWT.encode(payload: payload) }
+    let(:none_token) { ::JWT.encode(payload: payload, signer: JWT::Signer.new(nil, 'none')) }
     it 'decodes the token' do
       expect(::JWT.decode(none_token, 'key', false)).to eq([payload, { 'alg' => 'none' }])
     end
