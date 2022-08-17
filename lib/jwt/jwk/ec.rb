@@ -110,31 +110,40 @@ module JWT
           end
         end
 
-        def ec_pkey(jwk_crv, jwk_x, jwk_y, jwk_d)
+        def ec_pkey(jwk_crv, jwk_x, jwk_y, jwk_d) # rubocop:disable Metrics/MethodLength
           curve = to_openssl_curve(jwk_crv)
 
           x_octets = decode_octets(jwk_x)
           y_octets = decode_octets(jwk_y)
 
-          key = OpenSSL::PKey::EC.new(curve)
-
-          # The details of the `Point` instantiation are covered in:
-          # - https://docs.ruby-lang.org/en/2.4.0/OpenSSL/PKey/EC.html
-          # - https://www.openssl.org/docs/manmaster/man3/EC_POINT_new.html
-          # - https://tools.ietf.org/html/rfc5480#section-2.2
-          # - https://www.secg.org/SEC1-Ver-1.0.pdf
-          # Section 2.3.3 of the last of these references specifies that the
-          # encoding of an uncompressed point consists of the byte `0x04` followed
-          # by the x value then the y value.
           point = OpenSSL::PKey::EC::Point.new(
             OpenSSL::PKey::EC::Group.new(curve),
             OpenSSL::BN.new([0x04, x_octets, y_octets].pack('Ca*a*'), 2)
           )
 
-          key.public_key = point
-          key.private_key = OpenSSL::BN.new(decode_octets(jwk_d), 2) if jwk_d
+          sequence = if jwk_d
+            # https://datatracker.ietf.org/doc/html/rfc5915.html
+            # ECPrivateKey ::= SEQUENCE {
+            #   version        INTEGER { ecPrivkeyVer1(1) } (ecPrivkeyVer1),
+            #   privateKey     OCTET STRING,
+            #   parameters [0] ECParameters {{ NamedCurve }} OPTIONAL,
+            #   publicKey  [1] BIT STRING OPTIONAL
+            # }
 
-          key
+            OpenSSL::ASN1::Sequence([
+                                      OpenSSL::ASN1::Integer(1),
+                                      OpenSSL::ASN1::OctetString(OpenSSL::BN.new(decode_octets(jwk_d), 2).to_s(2)),
+                                      OpenSSL::ASN1::ObjectId(curve, 0, :EXPLICIT),
+                                      OpenSSL::ASN1::BitString(point.to_octet_string(:uncompressed), 1, :EXPLICIT)
+                                    ])
+          else
+            OpenSSL::ASN1::Sequence([
+                                      OpenSSL::ASN1::Sequence([OpenSSL::ASN1::ObjectId('id-ecPublicKey'), OpenSSL::ASN1::ObjectId(curve)]),
+                                      OpenSSL::ASN1::BitString(point.to_octet_string(:uncompressed))
+                                    ])
+          end
+
+          OpenSSL::PKey::EC.new(sequence.to_der)
         end
 
         def decode_octets(jwk_data)
